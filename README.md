@@ -1,4 +1,4 @@
-# ezFTP
+# PS4 FTP Client
 
 Simple FTP client for the PS4
 
