@@ -5,7 +5,7 @@ Simple FTP client for the PS4
 ![Preview](/screenshot.jpg)
 
 ## Installation
-Copy the **ezFTP.pkg** in to a FAT32 format usb drive then install from package installer
+Copy the **ps4_ftp_client.pkg** in to a FAT32 format usb drive then install from package installer
 
 ## Controls
 ```
