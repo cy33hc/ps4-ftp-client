@@ -641,9 +641,9 @@ namespace Windows
         ImGui::Dummy(ImVec2(0, 5));
         BeginGroupPanel(lang_strings[STR_MESSAGES], ImVec2(1905, 100));
         ImVec2 pos = ImGui::GetCursorPos();
-        ImGui::Dummy(ImVec2(1900, 30));
+        ImGui::Dummy(ImVec2(1880, 30));
         ImGui::SetCursorPos(pos);
-        ImGui::PushTextWrapPos(1900);
+        ImGui::PushTextWrapPos(1880);
         if (strncmp(status_message, "4", 1) == 0 || strncmp(status_message, "3", 1) == 0)
         {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", status_message);
