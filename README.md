@@ -63,6 +63,7 @@ Romanian
 Thai
 Vietnamese
 ```
+or any other language that you have a traslation for.
 
 ## Building
 ```
