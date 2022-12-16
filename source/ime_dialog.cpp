@@ -10,9 +10,9 @@
 #include "ime_dialog.h"
 
 static int ime_dialog_running = 0;
-static uint16_t inputTextBuffer[256+1];
-static uint8_t storebuffer[256];
-static char initial_ime_text[256];
+static uint16_t inputTextBuffer[512+1];
+static uint8_t storebuffer[512];
+static char initial_ime_text[512];
 static int max_text_length;
 
 static void utf16_to_utf8(const uint16_t *src, uint8_t *dst)
@@ -83,7 +83,7 @@ namespace Dialog
 
     uint16_t title[100];
 
-    if ((initialTextBuffer && strlen(initialTextBuffer) > 255) || (Title && strlen(Title) > 99))
+    if ((initialTextBuffer && strlen(initialTextBuffer) > 511) || (Title && strlen(Title) > 99))
     {
       ime_dialog_running = 0;
       return -1;
@@ -95,7 +95,7 @@ namespace Dialog
 
     if (initialTextBuffer)
     {
-      snprintf(initial_ime_text, 255, "%s", initialTextBuffer);
+      snprintf(initial_ime_text, 511, "%s", initialTextBuffer);
     }
 
     // converts the multibyte string src to a wide-character string starting at dest.
