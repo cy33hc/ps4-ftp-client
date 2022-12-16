@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <algorithm>
 #include <set>
-#include <dbglogger.h>
 #include "imgui.h"
 #include "windows.h"
 #include "fs.h"
@@ -262,15 +261,8 @@ namespace Windows
             ResetImeCallbacks();
             ime_field_size = 16;
             ime_callback = SingleValueImeCallback;
-            int ret = Dialog::initImeDialog(lang_strings[STR_SERVER], ftp_settings->server_ip, 15, ORBIS_TYPE_NUMBER, pos.x, pos.y);
-            if (ret >= 0)
-            {
-                gui_mode = GUI_MODE_IME;
-            }
-            else
-            {
-                sprintf(ftp_settings->server_ip, "%d", ret);
-            }
+            Dialog::initImeDialog(lang_strings[STR_SERVER], ftp_settings->server_ip, 15, ORBIS_TYPE_NUMBER, pos.x, pos.y);
+            gui_mode = GUI_MODE_IME;
         }
         ImGui::SameLine();
 
@@ -369,7 +361,7 @@ namespace Windows
         }
         ImGui::PopID();
         ImGui::PopStyleVar();
-        if (size.x > 275 && ImGui::IsItemHovered())
+        if (size.x > 560 && ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
             ImGui::Text("%s", local_directory);
@@ -513,7 +505,7 @@ namespace Windows
         }
         ImGui::PopID();
         ImGui::PopStyleVar();
-        if (size.x > 275 && ImGui::IsItemHovered())
+        if (size.x > 560 && ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
             ImGui::Text("%s", remote_directory);

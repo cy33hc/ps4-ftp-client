@@ -83,7 +83,7 @@ extern bool needs_extended_font;
 
 namespace Lang
 {
-	void SetTranslation();
+	void SetTranslation(int32_t lang_idx);
 }
 
 #endif

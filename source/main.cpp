@@ -7,10 +7,11 @@
 #include <orbis/libkernel.h>
 #include <orbis/Sysmodule.h>
 #include <orbis/UserService.h>
+#include <orbis/SystemService.h>
 #include <orbis/Pad.h>
 #include <orbis/AudioOut.h>
 #include <orbis/Net.h>
-#include <dbglogger.h>
+//#include <dbglogger.h>
 
 #include "imgui.h"
 #include "SDL2/SDL.h"
@@ -53,6 +54,8 @@ void InitImgui()
 		0x1E00, 0x1EFF, // Latin Extended Additional
 		0x1F00, 0x1FFF, // Greek Extended
 		0x2000, 0x206F, // General Punctuation
+		0x2100, 0x214F, // Letterlike Symbols
+		0x2460, 0x24FF, // Enclosed Alphanumerics
 		0x2DE0, 0x2DFF, // Cyrillic Extended-A
 		0x2E80, 0x2EFF, // CJK Radicals Supplement
 		0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
@@ -66,32 +69,35 @@ void InitImgui()
 	};
 
 	std::string lang = std::string(language);
+	int32_t lang_idx;
+	sceSystemServiceParamGetInt( ORBIS_SYSTEM_SERVICE_PARAM_ID_LANG, &lang_idx );
+
 	lang = Util::Trim(lang, " ");
-	if (lang.compare("Korean") == 0)
+	if (lang.compare("Korean") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_KOREAN))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesKorean());
 	}
-	else if (lang.compare("Simplified Chinese") == 0)
+	else if (lang.compare("Simplified Chinese") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_CHINESE_S))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 	}
-	else if (lang.compare("Traditional Chinese") == 0)
+	else if (lang.compare("Traditional Chinese") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_CHINESE_T))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
 	}
-	else if (lang.compare("Japanese") == 0 || lang.compare("Ryukyuan") == 0)
+	else if (lang.compare("Japanese") == 0 || lang.compare("Ryukyuan") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_JAPANESE))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	}
-	else if (lang.compare("Thai") == 0)
+	else if (lang.compare("Thai") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_THAI))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesThai());
 	}
-	else if (lang.compare("Vietnamese") == 0)
+	else if (lang.compare("Vietnamese") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_VIETNAMESE))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesVietnamese());
 	}
-	else if (lang.compare("Greek") == 0)
+	else if (lang.compare("Greek") == 0 || (lang.empty() && lang_idx == ORBIS_SYSTEM_PARAM_LANG_GREEK))
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto_ext.ttf", 26.0f, NULL, io.Fonts->GetGlyphRangesGreek());
 	}
@@ -99,6 +105,8 @@ void InitImgui()
 	{
 		io.Fonts->AddFontFromFileTTF("/app0/assets/fonts/Roboto.ttf", 26.0f, NULL, ranges);
 	}
+	Lang::SetTranslation(lang_idx);
+
 	auto &style = ImGui::GetStyle();
 	style.AntiAliasedLinesUseTex = false;
 	style.AntiAliasedLines = true;
@@ -203,7 +211,6 @@ int main()
     sceNetPoolCreate("simple", NET_HEAP_SIZE, 0);
 
 	CONFIG::LoadConfig();
-	Lang::SetTranslation();
 
 	// Create a window context
 	window = SDL_CreateWindow("main", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FRAME_WIDTH, FRAME_HEIGHT, 0);
