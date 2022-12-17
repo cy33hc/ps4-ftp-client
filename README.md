@@ -43,6 +43,7 @@ Catalan
 Croatian
 Euskera
 Galego
+Hungarian
 Indonesian
 Ryukyuan
 ```
@@ -58,7 +59,6 @@ Norwegian
 Turkish
 Arabic
 Czech
-Hungarian
 Romanian
 Thai
 Vietnamese
