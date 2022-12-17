@@ -134,6 +134,9 @@ namespace Lang
 				case ORBIS_SYSTEM_PARAM_LANG_INDONESIAN:
 					sprintf(langFile, "/app0/assets/langs/Indonesian.ini");
 					break;
+				case ORBIS_SYSTEM_PARAM_LANG_HUNGARIAN:
+					sprintf(langFile, "/app0/assets/langs/Hungarian.ini");
+					break;
 				default:
 					sprintf(langFile, "/app0/assets/langs/English.ini");
 					break;

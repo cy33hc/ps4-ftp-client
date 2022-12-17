@@ -26,7 +26,7 @@ add_executable(ps4_ftp_client
 
 add_self(ps4_ftp_client)
 
-add_pkg(ps4_ftp_client ${CMAKE_SOURCE_DIR}/data "FTPC00001" "PS4 FTP Client" "01.01" 32 0)
+add_pkg(ps4_ftp_client ${CMAKE_SOURCE_DIR}/data "FTPC00001" "PS4 FTP Client" "01.02" 32 0)
 
 target_link_libraries(ps4_ftp_client
   c
