@@ -171,6 +171,12 @@ void InitImgui()
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 }
 
+static void terminate()
+{
+	terminate_jbc();
+	sceSystemServiceLoadExec("exit", NULL);
+}
+
 int main()
 {
 	//dbglogger_init();
@@ -235,9 +241,9 @@ int main()
 
 	if (!initialize_jbc())
 	{
-		terminate_jbc();
-		sceSystemServiceLoadExec("exit", NULL);
+		terminate();
 	}
+	atexit(terminate);
 
 	GUI::RenderLoop(renderer);
 
@@ -246,7 +252,5 @@ int main()
 
 	ImGui::DestroyContext();
 
-	terminate_jbc();
-	sceSystemServiceLoadExec("exit", NULL);
 	return 0;
 }
