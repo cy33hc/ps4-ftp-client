@@ -21,6 +21,10 @@
 #include "lang.h"
 #include "gui.h"
 #include "util.h"
+extern "C"
+{
+#include "orbis_jbc.h"
+}
 
 #define FRAME_WIDTH 1920
 #define FRAME_HEIGHT 1080
@@ -229,6 +233,12 @@ int main()
 	ImGui_ImplSDLRenderer_CreateFontsTexture();
 	ImGui_ImplSDL2_DisableButton(SDL_CONTROLLER_BUTTON_X, true);
 
+	if (!initialize_jbc())
+	{
+		terminate_jbc();
+		sceSystemServiceLoadExec("exit", NULL);
+	}
+
 	GUI::RenderLoop(renderer);
 
 	SDL_DestroyRenderer(renderer);
@@ -236,5 +246,7 @@ int main()
 
 	ImGui::DestroyContext();
 
+	terminate_jbc();
+	sceSystemServiceLoadExec("exit", NULL);
 	return 0;
 }

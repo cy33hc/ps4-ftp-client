@@ -15,6 +15,7 @@ add_executable(ps4_ftp_client
   source/inifile.c
   source/lang.cpp
   source/main.cpp
+  source/orbis_jbc.c
   source/windows.cpp
   source/imgui_draw.cpp
   source/imgui_impl_sdl.cpp
@@ -26,7 +27,7 @@ add_executable(ps4_ftp_client
 
 add_self(ps4_ftp_client)
 
-add_pkg(ps4_ftp_client ${CMAKE_SOURCE_DIR}/data "FTPC00001" "PS4 FTP Client" "01.02" 32 0)
+add_pkg(ps4_ftp_client ${CMAKE_SOURCE_DIR}/data "FTPC00001" "PS4 FTP Client" "01.03" 32 0)
 
 target_link_libraries(ps4_ftp_client
   c
@@ -36,6 +37,7 @@ target_link_libraries(ps4_ftp_client
   pthread
   SDL2
   samplerate
+  jbc
   kernel
   SceShellCoreUtil
   SceSysmodule
