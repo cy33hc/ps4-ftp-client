@@ -15,6 +15,7 @@ Circle - Un-Select the file list to navigate to other widgets
 Square - Mark file(s)/folder(s) for Delete/Rename/Upload/Download
 R1 - Navigate to the Remote list of files
 L1 - Navigate to the Local list of files
+TouchPad Button - Exit Application
 ```
 
 ## Multi Language Support
