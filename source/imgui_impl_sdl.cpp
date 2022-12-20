@@ -79,6 +79,17 @@
 #endif
 #define SDL_HAS_VULKAN                      SDL_VERSION_ATLEAST(2,0,6)
 
+#define ANALOG_THRESHOLD 20000
+#define BUTTON_LEFT 0x00000010
+#define BUTTON_RIGHT 0x00000020
+#define BUTTON_UP 0x00000040
+#define BUTTON_DOWN 0x00000080
+
+static uint32_t previous_down = 0;
+static int repeat_count = 0;
+static int repeat_delay = 70;
+static uint64_t previous_time = 0;
+
 // Disabled controller buttons
 bool disabled_buttons[21] = {false, false, false, false, false, false, false, false, false, false,
                              false, false, false, false, false, false, false, false, false, false, false};
@@ -508,6 +519,47 @@ static void ImGui_ImplSDL2_UpdateGamepads()
     if (!game_controller)
         return;
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+    uint64_t current_time = SDL_GetTicks64();
+
+    // Simulate analog left stick as d-pad
+    uint32_t down = 0;
+    if (SDL_GameControllerGetAxis(game_controller, SDL_CONTROLLER_AXIS_LEFTX) < -ANALOG_THRESHOLD)
+        down |= BUTTON_LEFT;
+    else if (SDL_GameControllerGetAxis(game_controller, SDL_CONTROLLER_AXIS_LEFTX)  > ANALOG_THRESHOLD)
+        down |= BUTTON_RIGHT;
+    else if (SDL_GameControllerGetAxis(game_controller, SDL_CONTROLLER_AXIS_LEFTY)  > ANALOG_THRESHOLD)
+        down |= BUTTON_DOWN;
+    else if (SDL_GameControllerGetAxis(game_controller, SDL_CONTROLLER_AXIS_LEFTY)  < -ANALOG_THRESHOLD)
+        down |= BUTTON_UP;
+
+    uint32_t pressed = down & ~previous_down;
+    if (previous_down == down)
+    {
+        uint64_t delay = 300;
+        if (repeat_count > 0)
+            delay = repeat_delay;
+        if (current_time - previous_time > delay)
+        {
+            pressed = down;
+            previous_time = current_time;
+            repeat_count++;
+        }
+    }
+    else
+    {
+        previous_time = current_time;
+        repeat_count = 0;
+    }
+
+    if (pressed & BUTTON_LEFT)
+        io.AddKeyEvent(ImGuiKey_GamepadDpadLeft, true);
+    if (pressed & BUTTON_RIGHT)
+        io.AddKeyEvent(ImGuiKey_GamepadDpadRight, true);
+    if (pressed & BUTTON_UP)
+        io.AddKeyEvent(ImGuiKey_GamepadDpadUp, true);
+    if (pressed & BUTTON_DOWN)
+        io.AddKeyEvent(ImGuiKey_GamepadDpadDown, true);
+    previous_down = down;
 
     // Update gamepad inputs
     #define IM_SATURATE(V)                      (V < 0.0f ? 0.0f : V > 1.0f ? 1.0f : V)
@@ -530,14 +582,10 @@ static void ImGui_ImplSDL2_UpdateGamepads()
     MAP_ANALOG(ImGuiKey_GamepadR2,              SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 0.0f, 32767);
     MAP_BUTTON(ImGuiKey_GamepadL3,              SDL_CONTROLLER_BUTTON_LEFTSTICK);
     MAP_BUTTON(ImGuiKey_GamepadR3,              SDL_CONTROLLER_BUTTON_RIGHTSTICK);
-    MAP_ANALOG(ImGuiKey_GamepadLStickLeft,      SDL_CONTROLLER_AXIS_LEFTX,  -thumb_dead_zone, -32768);
-    MAP_ANALOG(ImGuiKey_GamepadLStickRight,     SDL_CONTROLLER_AXIS_LEFTX,  +thumb_dead_zone, +32767);
-    MAP_ANALOG(ImGuiKey_GamepadLStickUp,        SDL_CONTROLLER_AXIS_LEFTY,  -thumb_dead_zone, -32768);
-    MAP_ANALOG(ImGuiKey_GamepadLStickDown,      SDL_CONTROLLER_AXIS_LEFTY,  +thumb_dead_zone, +32767);
-    MAP_ANALOG(ImGuiKey_GamepadRStickLeft,      SDL_CONTROLLER_AXIS_RIGHTX, -thumb_dead_zone, -32768);
-    MAP_ANALOG(ImGuiKey_GamepadRStickRight,     SDL_CONTROLLER_AXIS_RIGHTX, +thumb_dead_zone, +32767);
-    MAP_ANALOG(ImGuiKey_GamepadRStickUp,        SDL_CONTROLLER_AXIS_RIGHTY, -thumb_dead_zone, -32768);
-    MAP_ANALOG(ImGuiKey_GamepadRStickDown,      SDL_CONTROLLER_AXIS_RIGHTY, +thumb_dead_zone, +32767);
+    MAP_ANALOG(ImGuiKey_GamepadLStickLeft,      SDL_CONTROLLER_AXIS_RIGHTX, -thumb_dead_zone, -32768);
+    MAP_ANALOG(ImGuiKey_GamepadLStickRight,     SDL_CONTROLLER_AXIS_RIGHTX, +thumb_dead_zone, +32767);
+    MAP_ANALOG(ImGuiKey_GamepadLStickUp,        SDL_CONTROLLER_AXIS_RIGHTY, -thumb_dead_zone, -32768);
+    MAP_ANALOG(ImGuiKey_GamepadLStickDown,      SDL_CONTROLLER_AXIS_RIGHTY, +thumb_dead_zone, +32767);
     #undef MAP_BUTTON
     #undef MAP_ANALOG
 }
