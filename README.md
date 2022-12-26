@@ -47,6 +47,7 @@ Galego
 Hungarian
 Indonesian
 Ryukyuan
+Thai
 ```
 User must modify the file **/data/ps4-ftp-client/config.ini** located in the ps4 hard drive and update the **language** setting to with the **exact** values from the list above.
 
@@ -61,7 +62,6 @@ Turkish
 Arabic
 Czech
 Romanian
-Thai
 Vietnamese
 ```
 or any other language that you have a traslation for.
