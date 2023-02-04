@@ -46,7 +46,7 @@ FtpClient::~FtpClient()
 	free(mp_ftphandle);
 }
 
-int FtpClient::Connect(const char *host, unsigned short port)
+int FtpClient::Connect(const std::string &host, unsigned short port, const std::string &user, const std::string &pass)
 {
 	int sControl;
 	in_addr dst_addr; /* destination address */
@@ -63,7 +63,7 @@ int FtpClient::Connect(const char *host, unsigned short port)
 	memset(&mp_ftphandle->response, 0, sizeof(mp_ftphandle->response));
 
 	memset(&server_addr, 0, sizeof(server_addr));
-	inet_pton(AF_INET, host, (void *)&dst_addr);
+	inet_pton(AF_INET, host.c_str(), (void *)&dst_addr);
 	server_addr.sin_addr = dst_addr;
 	server_addr.sin_port = htons(port);
 	server_addr.sin_family = AF_INET;
@@ -96,7 +96,28 @@ int FtpClient::Connect(const char *host, unsigned short port)
 		return 0;
 	}
 
-	return 1;
+	std::string cmd = "USER " + user; 
+	if (!FtpSendCmd(cmd, '3', mp_ftphandle))
+	{
+		if (mp_ftphandle->ctrl != NULL)
+			return 1;
+		if (*LastResponse() == '2')
+			return 1;
+		return 0;
+	}
+
+	cmd = "PASS " + pass;
+	int ret;
+	if ((ret = FtpSendCmd(cmd, '2', mp_ftphandle)))
+	{
+		mp_ftphandle->is_connected = true;
+	}
+	else
+	{
+		Quit();
+	}
+
+	return ret;
 }
 
 /*
@@ -104,7 +125,7 @@ int FtpClient::Connect(const char *host, unsigned short port)
  *
  * return 1 if proper response received, 0 otherwise
  */
-int FtpClient::FtpSendCmd(const char *cmd, char expected_resp, ftphandle *nControl)
+int FtpClient::FtpSendCmd(const std::string &cmd, char expected_resp, ftphandle *nControl)
 {
 	char buf[512];
 	int x;
@@ -114,7 +135,7 @@ int FtpClient::FtpSendCmd(const char *cmd, char expected_resp, ftphandle *nContr
 	if (nControl->dir != FTP_CLIENT_CONTROL)
 		return 0;
 
-	sprintf(buf, "%s\r\n", cmd);
+	sprintf(buf, "%s\r\n", cmd.c_str());
 	x = send(nControl->handle, buf, strlen(buf), 0);
 	if (x <= 0)
 	{
@@ -237,35 +258,6 @@ int FtpClient::Readline(char *buf, int max, ftphandle *nControl)
 }
 
 /*
- * FtpLogin - log in to remote server
- *
- * return 1 if logged in, 0 otherwise
- */
-int FtpClient::Login(const char *user, const char *pass)
-{
-	char tempbuf[128];
-
-	if (((strlen(user) + 7) > sizeof(tempbuf)) || ((strlen(pass) + 7) > sizeof(tempbuf)))
-		return 0;
-	sprintf(tempbuf, "USER %s", user);
-	if (!FtpSendCmd(tempbuf, '3', mp_ftphandle))
-	{
-		if (mp_ftphandle->ctrl != NULL)
-			return 1;
-		if (*LastResponse() == '2')
-			return 1;
-		return 0;
-	}
-	sprintf(tempbuf, "PASS %s", pass);
-	int ret;
-	if (ret = FtpSendCmd(tempbuf, '2', mp_ftphandle))
-	{
-		mp_ftphandle->is_connected = true;
-	}
-	return ret;
-}
-
-/*
  * FtpLastResponse - return a pointer to the last response received
  */
 char *FtpClient::LastResponse()
@@ -311,12 +303,12 @@ void FtpClient::SetConnmode(connmode mode)
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::FtpAccess(const char *path, accesstype type, transfermode mode, ftphandle *nControl, ftphandle **nData)
+int FtpClient::FtpAccess(const std::string &path, accesstype type, transfermode mode, ftphandle *nControl, ftphandle **nData)
 {
 	char buf[512];
 	int dir;
 
-	if ((path == NULL) && ((type == FtpClient::filewrite) || (type == FtpClient::fileread) || (type == FtpClient::filereadappend) || (type == FtpClient::filewriteappend)))
+	if ((path.length() == 0) && ((type == FtpClient::filewrite) || (type == FtpClient::fileread) || (type == FtpClient::filereadappend) || (type == FtpClient::filewriteappend)))
 	{
 		sprintf(nControl->response, "Missing path argument for file transfer\n");
 		return 0;
@@ -353,24 +345,25 @@ int FtpClient::FtpAccess(const char *path, accesstype type, transfermode mode, f
 		sprintf(nControl->response, "Invalid open type %d\n", type);
 		return 0;
 	}
-	if (path != NULL)
+	if (path.length() != 0)
 	{
 		int i = strlen(buf);
 		buf[i++] = ' ';
-		if ((strlen(path) + i) >= sizeof(buf))
+		if ((path.length() + i) >= sizeof(buf))
 			return 0;
-		strcpy(&buf[i], path);
+		strcpy(&buf[i], path.c_str());
 	}
 
+	std::string cmd = std::string(buf);
 	if (nControl->cmode == FtpClient::pasv)
 	{
-		if (FtpOpenPasv(nControl, nData, mode, dir, buf) == -1)
+		if (FtpOpenPasv(nControl, nData, mode, dir, cmd) == -1)
 			return 0;
 	}
 
 	if (nControl->cmode == FtpClient::port)
 	{
-		if (FtpOpenPort(nControl, nData, mode, dir, buf) == -1)
+		if (FtpOpenPort(nControl, nData, mode, dir, cmd) == -1)
 			return 0;
 		if (!FtpAcceptConnection(*nData, nControl))
 		{
@@ -442,7 +435,7 @@ int FtpClient::FtpAcceptConnection(ftphandle *nData, ftphandle *nControl)
  *
  * return 1 if successful, -1 otherwise
  */
-int FtpClient::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mode, int dir, char *cmd)
+int FtpClient::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode mode, int dir, std::string &cmd)
 {
 	int sData;
 	union
@@ -532,8 +525,8 @@ int FtpClient::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode 
 
 	if (nControl->dir != FTP_CLIENT_CONTROL)
 		return -1;
-	memcpy(cmd + strlen(cmd), "\r\n\0", 3);
-	ret = send(nControl->handle, cmd, strlen(cmd), 0);
+	std::string tmp = cmd + "\r\n";
+	ret = send(nControl->handle, tmp.c_str(), tmp.length(), 0);
 	if (ret <= 0)
 	{
 		return -1;
@@ -587,7 +580,7 @@ int FtpClient::FtpOpenPasv(ftphandle *nControl, ftphandle **nData, transfermode 
  *
  * return 1 if successful, -1 otherwise
  */
-int FtpClient::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mode, int dir, char *cmd)
+int FtpClient::FtpOpenPort(ftphandle *nControl, ftphandle **nData, transfermode mode, int dir, std::string &cmd)
 {
 	int sData;
 	union
@@ -749,14 +742,14 @@ int FtpClient::CorrectPasvResponse(int *v)
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::FtpXfer(const char *localfile, const char *path, ftphandle *nControl, accesstype type, transfermode mode)
+int FtpClient::FtpXfer(const std::string &localfile, const std::string &path, ftphandle *nControl, accesstype type, transfermode mode)
 {
 	int l, c;
 	char *dbuf;
 	FILE *local = NULL;
 	ftphandle *nData;
 
-	if (localfile != NULL)
+	if (localfile.length() != 0)
 	{
 		char ac[3] = "  ";
 		if ((type == FtpClient::dir) || (type == FtpClient::dirverbose) || (type == FtpClient::dirmlsd))
@@ -787,7 +780,7 @@ int FtpClient::FtpXfer(const char *localfile, const char *path, ftphandle *nCont
 		if (mode == FtpClient::image)
 			ac[1] = 'b';
 
-		local = fopen(localfile, ac);
+		local = fopen(localfile.c_str(), ac);
 		if (local == NULL)
 		{
 			strncpy(nControl->response, strerror(errno), sizeof(nControl->response));
@@ -800,7 +793,7 @@ int FtpClient::FtpXfer(const char *localfile, const char *path, ftphandle *nCont
 		local = ((type == FtpClient::filewrite) || (type == FtpClient::filewriteappend)) ? stdin : stdout;
 	if (!FtpAccess(path, type, mode, nControl, &nData))
 	{
-		if (localfile != NULL)
+		if (localfile.length() != 0)
 			fclose(local);
 		return 0;
 	}
@@ -828,7 +821,7 @@ int FtpClient::FtpXfer(const char *localfile, const char *path, ftphandle *nCont
 	}
 	free(dbuf);
 	fflush(local);
-	if (localfile != NULL)
+	if (localfile.length() != 0)
 		fclose(local);
 	return FtpClose(nData);
 }
@@ -998,7 +991,7 @@ int FtpClient::Quit()
 	return 1;
 }
 
-ftphandle *FtpClient::RawOpen(const char *path, accesstype type, transfermode mode)
+ftphandle *FtpClient::RawOpen(const std::string &path, accesstype type, transfermode mode)
 {
 	int ret;
 	ftphandle *datahandle;
@@ -1029,14 +1022,10 @@ int FtpClient::RawRead(void *buf, int max, ftphandle *handle)
  *
  * return 1 if command successful, 0 otherwise
  */
-int FtpClient::Site(const char *cmd)
+int FtpClient::Site(const std::string &cmd)
 {
-	char buf[512];
-
-	if ((strlen(cmd) + 7) > sizeof(buf))
-		return 0;
-	sprintf(buf, "SITE %s", cmd);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
+	std::string tmp = "SITE " + cmd;
+	if (!FtpSendCmd(tmp, '2', mp_ftphandle))
 		return 0;
 	return 1;
 }
@@ -1047,11 +1036,9 @@ int FtpClient::Site(const char *cmd)
  * return 1 if command successful, 0 otherwise
  */
 
-int FtpClient::Raw(const char *cmd)
+int FtpClient::Raw(const std::string &cmd)
 {
-	char buf[512];
-	strncpy(buf, cmd, 512);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
+	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 	return 1;
 }
@@ -1084,14 +1071,10 @@ int FtpClient::SysType(char *buf, int max)
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::Mkdir(const char *path)
+int FtpClient::Mkdir(const std::string &path)
 {
-	char buf[512];
-
-	if ((strlen(path) + 6) > sizeof(buf))
-		return 0;
-	sprintf(buf, "MKD %s", path);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
+	std::string cmd = "MKD " + path;
+	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 	return 1;
 }
@@ -1101,14 +1084,10 @@ int FtpClient::Mkdir(const char *path)
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::Chdir(const char *path)
+int FtpClient::Chdir(const std::string &path)
 {
-	char buf[512];
-
-	if ((strlen(path) + 6) > sizeof(buf))
-		return 0;
-	sprintf(buf, "CWD %s", path);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
+	std::string cmd = "CWD " + path;
+	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 	return 1;
 }
@@ -1137,19 +1116,20 @@ bool FtpClient::Noop()
 	return 1;
 }
 
+bool FtpClient::Ping()
+{
+	return Noop();
+}
+
 /*
  * FtpRmdir - remove directory at remote
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::Rmdir(const char *path)
+int FtpClient::Rmdir(const std::string &path)
 {
-	char buf[512];
-
-	if ((strlen(path) + 6) > sizeof(buf))
-		return 0;
-	sprintf(buf, "RMD %s", path);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
+	std::string cmd = "RMD " + path;
+	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 	return 1;
 }
@@ -1159,12 +1139,12 @@ int FtpClient::Rmdir(const char *path)
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::Rmdir(const char *path, bool recursive)
+int FtpClient::Rmdir(const std::string &path, bool recursive)
 {
 	if (stop_activity)
 		return 1;
 
-	std::vector<FsEntry> list = ListDir(path);
+	std::vector<DirEntry> list = ListDir(path);
 	int ret;
 	for (int i = 0; i < list.size(); i++)
 	{
@@ -1198,47 +1178,24 @@ int FtpClient::Rmdir(const char *path, bool recursive)
 }
 
 /*
- * FtpPwd - get working directory at remote
- *
- * return 1 if successful, 0 otherwise
- */
-int FtpClient::Pwd(char *path, int max)
-{
-	int l = max;
-	char *b = path;
-	char *s;
-
-	if (!FtpSendCmd("PWD", '2', mp_ftphandle))
-		return 0;
-	s = strchr(mp_ftphandle->response, '"');
-	if (s == NULL)
-		return 0;
-	s++;
-	while ((--l) && (*s) && (*s != '"'))
-		*b++ = *s++;
-	*b = '\0';
-	return 1;
-}
-
-/*
  * FtpSize - determine the size of a remote file
  *
  * return 1 if successful, 0 otherwise
  */
-int FtpClient::Size(const char *path, int64_t *size, transfermode mode)
+int FtpClient::Size(const std::string &path, int64_t *size)
 {
 	char cmd[512];
 	int resp, rv = 1;
 	int64_t sz;
 
-	if ((strlen(path) + 7) > sizeof(cmd))
+	if ((path.length() + 7) > sizeof(cmd))
 		return 0;
 
-	sprintf(cmd, "TYPE %c", mode);
+	sprintf(cmd, "TYPE %c", FtpClient::transfermode::image);
 	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 
-	sprintf(cmd, "SIZE %s", path);
+	sprintf(cmd, "SIZE %s", path.c_str());
 	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		rv = 0;
 	else
@@ -1251,24 +1208,10 @@ int FtpClient::Size(const char *path, int64_t *size, transfermode mode)
 	return rv;
 }
 
-/*
- * FtpModDate - determine the modification date of a remote file
- *
- * return 1 if successful, 0 otherwise
- */
-int FtpClient::ModDate(const char *path, char *dt, int max)
+bool FtpClient::FileExists(const std::string &path)
 {
-	char buf[512];
-	int rv = 1;
-
-	if ((strlen(path) + 7) > sizeof(buf))
-		return 0;
-	sprintf(buf, "MDTM %s", path);
-	if (!FtpSendCmd(buf, '2', mp_ftphandle))
-		rv = 0;
-	else
-		strncpy(dt, &mp_ftphandle->response[4], max);
-	return rv;
+	int64_t filesize;
+	return Size(path, &filesize);
 }
 
 /*
@@ -1277,13 +1220,13 @@ int FtpClient::ModDate(const char *path, char *dt, int max)
  * return 1 if successful, 0 otherwise
  */
 
-int FtpClient::Get(const char *outputfile, const char *path, transfermode mode, int64_t offset)
+int FtpClient::Get(const std::string &outputfile, const std::string &path, int64_t offset)
 {
 	mp_ftphandle->offset = offset;
 	if (offset == 0)
-		return FtpXfer(outputfile, path, mp_ftphandle, FtpClient::fileread, mode);
+		return FtpXfer(outputfile, path, mp_ftphandle, FtpClient::fileread, FtpClient::transfermode::image);
 	else
-		return FtpXfer(outputfile, path, mp_ftphandle, FtpClient::filereadappend, mode);
+		return FtpXfer(outputfile, path, mp_ftphandle, FtpClient::filereadappend, FtpClient::transfermode::image);
 }
 
 /*
@@ -1292,38 +1235,30 @@ int FtpClient::Get(const char *outputfile, const char *path, transfermode mode, 
  * return 1 if successful, 0 otherwise
  */
 
-int FtpClient::Put(const char *inputfile, const char *path, transfermode mode, int64_t offset)
+int FtpClient::Put(const std::string &inputfile, const std::string &path, int64_t offset)
 {
 	mp_ftphandle->offset = offset;
 	if (offset == 0)
-		return FtpXfer(inputfile, path, mp_ftphandle, FtpClient::filewrite, mode);
+		return FtpXfer(inputfile, path, mp_ftphandle, FtpClient::filewrite, FtpClient::transfermode::image);
 	else
-		return FtpXfer(inputfile, path, mp_ftphandle, FtpClient::filewriteappend, mode);
+		return FtpXfer(inputfile, path, mp_ftphandle, FtpClient::filewriteappend, FtpClient::transfermode::image);
 }
 
-int FtpClient::Rename(const char *src, const char *dst)
+int FtpClient::Rename(const std::string &src, const std::string &dst)
 {
-	char cmd[512];
-
-	if (((strlen(src) + 7) > sizeof(cmd)) || ((strlen(dst) + 7) > sizeof(cmd)))
-		return 0;
-	sprintf(cmd, "RNFR %s", src);
+	std::string cmd = "RNFR " + src;
 	if (!FtpSendCmd(cmd, '3', mp_ftphandle))
 		return 0;
-	sprintf(cmd, "RNTO %s", dst);
+	cmd = "RNTO " + dst;
 	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 
 	return 1;
 }
 
-int FtpClient::Delete(const char *path)
+int FtpClient::Delete(const std::string &path)
 {
-	char cmd[512];
-
-	if ((strlen(path) + 7) > sizeof(cmd))
-		return 0;
-	sprintf(cmd, "DELE %s", path);
+	std::string cmd = "DELE " + path;
 	if (!FtpSendCmd(cmd, '2', mp_ftphandle))
 		return 0;
 	return 1;
@@ -1336,7 +1271,7 @@ int FtpClient::Delete(const char *path)
  * @return -1 on error or 1 on success
  **/
 
-int FtpClient::ParseDirEntry(char *line, FsEntry *dirEntry)
+int FtpClient::ParseDirEntry(char *line, DirEntry *dirEntry)
 {
 	unsigned int i;
 	size_t n;
@@ -1560,7 +1495,7 @@ int FtpClient::ParseDirEntry(char *line, FsEntry *dirEntry)
 	return 1;
 }
 
-int FtpClient::ParseMLSDDirEntry(char *line, FsEntry *dirEntry)
+int FtpClient::ParseMLSDDirEntry(char *line, DirEntry *dirEntry)
 {
 	char *p;
 	char *token;
@@ -1601,10 +1536,10 @@ int FtpClient::ParseMLSDDirEntry(char *line, FsEntry *dirEntry)
 	return 1;
 }
 
-std::vector<std::string> FtpClient::ListFiles(const char *path, bool includeSubDir)
+std::vector<std::string> FtpClient::ListFiles(const std::string &path, bool includeSubDir)
 {
 	std::vector<std::string> out;
-	std::vector<FsEntry> list = ListDir(path);
+	std::vector<DirEntry> list = ListDir(path);
 	for (int i = 0; i < list.size(); i++)
 	{
 		if (list[i].isDir && includeSubDir)
@@ -1625,18 +1560,18 @@ std::vector<std::string> FtpClient::ListFiles(const char *path, bool includeSubD
 	return out;
 }
 
-std::vector<FsEntry> FtpClient::ListDir(const char *path)
+std::vector<DirEntry> FtpClient::ListDir(const std::string &path)
 {
-	std::vector<FsEntry> out;
-	FsEntry entry;
-	memset(&entry, 0, sizeof(FsEntry));
-	if (path[strlen(path) - 1] == '/' && strlen(path) > 1)
+	std::vector<DirEntry> out;
+	DirEntry entry;
+	memset(&entry, 0, sizeof(DirEntry));
+	if (path[path.length() - 1] == '/' && path.length() > 1)
 	{
-		strlcpy(entry.directory, path, strlen(path) - 1);
+		strlcpy(entry.directory, path.c_str(), path.length() - 1);
 	}
 	else
 	{
-		sprintf(entry.directory, "%s", path);
+		sprintf(entry.directory, "%s", path.c_str());
 	}
 	sprintf(entry.name, "..");
 	sprintf(entry.path, "%s", entry.directory);
@@ -1657,18 +1592,18 @@ std::vector<FsEntry> FtpClient::ListDir(const char *path)
 		ret = FtpRead(buf, 1024, nData);
 		while (ret > 0)
 		{
-			FsEntry entry;
+			DirEntry entry;
 			memset(&entry, 0, sizeof(entry));
 			if (ParseDirEntry(buf, &entry) > 0)
 			{
-				sprintf(entry.directory, "%s", path);
-				if (strlen(path) > 0 && path[strlen(path) - 1] == '/')
+				sprintf(entry.directory, "%s", path.c_str());
+				if (path.length() > 0 && path[path.length() - 1] == '/')
 				{
-					sprintf(entry.path, "%s%s", path, entry.name);
+					sprintf(entry.path, "%s%s", path.c_str(), entry.name);
 				}
 				else
 				{
-					sprintf(entry.path, "%s/%s", path, entry.name);
+					sprintf(entry.path, "%s/%s", path.c_str(), entry.name);
 				}
 
 				if (entry.isDir)

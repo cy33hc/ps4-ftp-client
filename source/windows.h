@@ -5,8 +5,8 @@
 #include <set>
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "fs.h"
-#include "ftpclient.h"
+#include "common.h"
+#include "remote_client.h"
 #include "actions.h"
 #include "SDL2/SDL.h"
 
@@ -15,15 +15,15 @@
 
 extern int view_mode;
 extern bool handle_updates;
-extern FtpClient *ftpclient;
+extern RemoteClient *ftpclient;
 extern int64_t bytes_transfered;
 extern int64_t bytes_to_download;
-extern std::vector<FsEntry> local_files;
-extern std::vector<FsEntry> remote_files;
-extern std::set<FsEntry> multi_selected_local_files;
-extern std::set<FsEntry> multi_selected_remote_files;
-extern FsEntry selected_local_file;
-extern FsEntry selected_remote_file;
+extern std::vector<DirEntry> local_files;
+extern std::vector<DirEntry> remote_files;
+extern std::set<DirEntry> multi_selected_local_files;
+extern std::set<DirEntry> multi_selected_remote_files;
+extern DirEntry selected_local_file;
+extern DirEntry selected_remote_file;
 extern ACTIONS selected_action;
 extern char status_message[];
 extern char local_file_to_select[];

@@ -5,40 +5,11 @@
 #include <string.h>
 #include <string>
 #include <vector>
-
 #include <cstdint>
+
+#include "common.h"
+
 #define MAX_PATH_LENGTH 1024
-
-/**
- * @brief Date and time representation
- **/
-typedef struct
-{
-    uint16_t year;
-    uint8_t month;
-    uint8_t day;
-    uint8_t dayOfWeek;
-    uint8_t hours;
-    uint8_t minutes;
-    uint8_t seconds;
-    uint32_t microsecond;
-} DateTime;
-
-struct FsEntry
-{
-    char directory[512];
-    char name[256];
-    char display_size[32];
-    char path[1024];
-    int64_t file_size;
-    bool isDir;
-    DateTime modified;
-
-    friend bool operator<(FsEntry const &a, FsEntry const &b)
-    {
-        return strcmp(a.name, b.name) < 0;
-    }
-};
 
 namespace FS
 {
@@ -79,9 +50,7 @@ namespace FS
     void Save(const std::string &path, const void *data, uint32_t size);
 
     std::vector<std::string> ListFiles(const std::string &path);
-    std::vector<FsEntry> ListDir(const std::string &path, int *err);
-
-    void Sort(std::vector<FsEntry> &list);
+    std::vector<DirEntry> ListDir(const std::string &path, int *err);
 
     int hasEndSlash(const char *path);
 }

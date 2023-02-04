@@ -19,9 +19,9 @@ namespace Actions
         int err;
         if (strlen(local_filter) > 0 && apply_filter)
         {
-            std::vector<FsEntry> temp_files = FS::ListDir(local_directory, &err);
+            std::vector<DirEntry> temp_files = FS::ListDir(local_directory, &err);
             std::string lower_filter = Util::ToLower(local_filter);
-            for (std::vector<FsEntry>::iterator it = temp_files.begin(); it != temp_files.end();)
+            for (std::vector<DirEntry>::iterator it = temp_files.begin(); it != temp_files.end();)
             {
                 std::string lower_name = Util::ToLower(it->name);
                 if (lower_name.find(lower_filter) != std::string::npos || strcmp(it->name, "..") == 0)
@@ -36,14 +36,14 @@ namespace Actions
         {
             local_files = FS::ListDir(local_directory, &err);
         }
-        FS::Sort(local_files);
+        DirEntry::Sort(local_files);
         if (err != 0)
             sprintf(status_message, lang_strings[STR_FAIL_READ_LOCAL_DIR_MSG]);
     }
 
     void RefreshRemoteFiles(bool apply_filter)
     {
-        if (!ftpclient->Noop())
+        if (!ftpclient->Ping())
         {
             ftpclient->Quit();
             sprintf(status_message, lang_strings[STR_CONNECTION_CLOSE_ERR_MSG]);
@@ -55,9 +55,9 @@ namespace Actions
         remote_files.clear();
         if (strlen(remote_filter) > 0 && apply_filter)
         {
-            std::vector<FsEntry> temp_files = ftpclient->ListDir(remote_directory);
+            std::vector<DirEntry> temp_files = ftpclient->ListDir(remote_directory);
             std::string lower_filter = Util::ToLower(remote_filter);
-            for (std::vector<FsEntry>::iterator it = temp_files.begin(); it != temp_files.end();)
+            for (std::vector<DirEntry>::iterator it = temp_files.begin(); it != temp_files.end();)
             {
                 std::string lower_name = Util::ToLower(it->name);
                 if (lower_name.find(lower_filter) != std::string::npos || strcmp(it->name, "..") == 0)
@@ -72,11 +72,11 @@ namespace Actions
         {
             remote_files = ftpclient->ListDir(remote_directory);
         }
-        FS::Sort(remote_files);
+        DirEntry::Sort(remote_files);
         sprintf(status_message, "%s", ftpclient->LastResponse());
     }
 
-    void HandleChangeLocalDirectory(const FsEntry entry)
+    void HandleChangeLocalDirectory(const DirEntry entry)
     {
         if (!entry.isDir)
             return;
@@ -109,12 +109,12 @@ namespace Actions
         selected_action = ACTION_NONE;
     }
 
-    void HandleChangeRemoteDirectory(const FsEntry entry)
+    void HandleChangeRemoteDirectory(const DirEntry entry)
     {
         if (!entry.isDir)
             return;
 
-        if (!ftpclient->Noop())
+        if (!ftpclient->Ping())
         {
             ftpclient->Quit();
             sprintf(status_message, lang_strings[STR_CONNECTION_CLOSE_ERR_MSG]);
@@ -215,7 +215,7 @@ namespace Actions
 
     void *DeleteSelectedLocalFilesThread(void *argp)
     {
-        for (std::set<FsEntry>::iterator it = multi_selected_local_files.begin(); it != multi_selected_local_files.end(); ++it)
+        for (std::set<DirEntry>::iterator it = multi_selected_local_files.begin(); it != multi_selected_local_files.end(); ++it)
         {
             FS::RmRecursive(it->path);
         }
@@ -238,9 +238,9 @@ namespace Actions
 
     void *DeleteSelectedRemotesFilesThread(void *argp)
     {
-        if (ftpclient->Noop())
+        if (ftpclient->Ping())
         {
-            for (std::set<FsEntry>::iterator it = multi_selected_remote_files.begin(); it != multi_selected_remote_files.end(); ++it)
+            for (std::set<DirEntry>::iterator it = multi_selected_remote_files.begin(); it != multi_selected_remote_files.end(); ++it)
             {
                 if (it->isDir)
                     ftpclient->Rmdir(it->path, true);
@@ -274,7 +274,7 @@ namespace Actions
     {
         int ret;
         int64_t filesize;
-        ret = ftpclient->Noop();
+        ret = ftpclient->Ping();
         if (ret == 0)
         {
             ftpclient->Quit();
@@ -282,7 +282,7 @@ namespace Actions
             return ret;
         }
 
-        if (overwrite_type == OVERWRITE_PROMPT && ftpclient->Size(dest, &filesize, FtpClient::transfermode::image))
+        if (overwrite_type == OVERWRITE_PROMPT && ftpclient->FileExists(dest))
         {
             sprintf(confirm_message, "%s %s?", lang_strings[STR_OVERWRITE], dest);
             confirm_state = CONFIRM_WAIT;
@@ -295,7 +295,7 @@ namespace Actions
             activity_inprogess = true;
             selected_action = action_to_take;
         }
-        else if (overwrite_type == OVERWRITE_NONE && ftpclient->Size(dest, &filesize, FtpClient::transfermode::image))
+        else if (overwrite_type == OVERWRITE_NONE && ftpclient->FileExists(dest))
         {
             confirm_state = CONFIRM_NO;
         }
@@ -306,13 +306,13 @@ namespace Actions
 
         if (confirm_state == CONFIRM_YES)
         {
-            return ftpclient->Put(src, dest, FtpClient::transfermode::image, 0);
+            return ftpclient->Put(src, dest, 0);
         }
 
         return 1;
     }
 
-    int Upload(const FsEntry &src, const char *dest)
+    int Upload(const DirEntry &src, const char *dest)
     {
         if (stop_activity)
             return 1;
@@ -321,7 +321,7 @@ namespace Actions
         if (src.isDir)
         {
             int err;
-            std::vector<FsEntry> entries = FS::ListDir(src.path, &err);
+            std::vector<DirEntry> entries = FS::ListDir(src.path, &err);
             ftpclient->Mkdir(dest);
             for (int i = 0; i < entries.size(); i++)
             {
@@ -382,7 +382,7 @@ namespace Actions
     void *UploadFilesThread(void *argp)
     {
         file_transfering = true;
-        for (std::set<FsEntry>::iterator it = multi_selected_local_files.begin(); it != multi_selected_local_files.end(); ++it)
+        for (std::set<DirEntry>::iterator it = multi_selected_local_files.begin(); it != multi_selected_local_files.end(); ++it)
         {
             if (it->isDir)
             {
@@ -419,7 +419,7 @@ namespace Actions
     int DownloadFile(const char *src, const char *dest)
     {
         int ret;
-        ret = ftpclient->Size(src, &bytes_to_download, FtpClient::transfermode::image);
+        ret = ftpclient->Size(src, &bytes_to_download);
         if (ret == 0)
         {
             ftpclient->Quit();
@@ -451,13 +451,13 @@ namespace Actions
 
         if (confirm_state == CONFIRM_YES)
         {
-            return ftpclient->Get(dest, src, FtpClient::transfermode::image, 0);
+            return ftpclient->Get(dest, src, 0);
         }
 
         return 1;
     }
 
-    int Download(const FsEntry &src, const char *dest)
+    int Download(const DirEntry &src, const char *dest)
     {
         if (stop_activity)
             return 1;
@@ -466,7 +466,7 @@ namespace Actions
         if (src.isDir)
         {
             int err;
-            std::vector<FsEntry> entries = ftpclient->ListDir(src.path);
+            std::vector<DirEntry> entries = ftpclient->ListDir(src.path);
             FS::MkDirs(dest);
             for (int i = 0; i < entries.size(); i++)
             {
@@ -525,7 +525,7 @@ namespace Actions
     void *DownloadFilesThread(void *argp)
     {
         file_transfering = true;
-        for (std::set<FsEntry>::iterator it = multi_selected_remote_files.begin(); it != multi_selected_remote_files.end(); ++it)
+        for (std::set<DirEntry>::iterator it = multi_selected_remote_files.begin(); it != multi_selected_remote_files.end(); ++it)
         {
             if (it->isDir)
             {
@@ -562,14 +562,15 @@ namespace Actions
     void *KeepAliveThread(void *argp)
     {
         long idle;
-        while (ftpclient->IsConnected())
+        FtpClient *client = (FtpClient*) ftpclient;
+        while (client->IsConnected())
         {
-            idle = ftpclient->GetIdleTime();
+            idle = client->GetIdleTime();
             if (idle > 60000000)
             {
-                if (!ftpclient->Noop())
+                if (!ftpclient->Ping())
                 {
-                    ftpclient->Quit();
+                    client->Quit();
                     sprintf(status_message, lang_strings[STR_REMOTE_TERM_CONN_MSG]);
                     return NULL;
                 }
@@ -582,23 +583,16 @@ namespace Actions
     void ConnectFTP()
     {
         CONFIG::SaveConfig();
-        if (ftpclient->Connect(ftp_settings->server_ip, ftp_settings->server_port))
+        if (ftpclient->Connect(ftp_settings->server_ip, ftp_settings->server_port, ftp_settings->username, ftp_settings->password))
         {
-            if (ftpclient->Login(ftp_settings->username, ftp_settings->password))
-            {
-                RefreshRemoteFiles(false);
-                sprintf(status_message, "%s", ftpclient->LastResponse());
+            RefreshRemoteFiles(false);
+            sprintf(status_message, "%s", ftpclient->LastResponse());
 
-                int res = pthread_create(&ftp_keep_alive_thid, NULL, KeepAliveThread, NULL);
-            }
-            else
-            {
-                sprintf(status_message, lang_strings[STR_FAIL_LOGIN_MSG]);
-            }
+            int res = pthread_create(&ftp_keep_alive_thid, NULL, KeepAliveThread, NULL);
         }
         else
         {
-            sprintf(status_message, lang_strings[STR_FAIL_TIMEOUT_MSG]);
+                sprintf(status_message, lang_strings[STR_FAIL_LOGIN_MSG]);
         }
         selected_action = ACTION_NONE;
     }

@@ -2,7 +2,7 @@
 #define ACTIONS_H
 
 #include <pthread.h>
-#include "fs.h"
+#include "common.h"
 
 #define CONFIRM_NONE -1
 #define CONFIRM_WAIT 0
@@ -52,8 +52,8 @@ namespace Actions
 
     void RefreshLocalFiles(bool apply_filter);
     void RefreshRemoteFiles(bool apply_filter);
-    void HandleChangeLocalDirectory(const FsEntry entry);
-    void HandleChangeRemoteDirectory(const FsEntry entry);
+    void HandleChangeLocalDirectory(const DirEntry entry);
+    void HandleChangeRemoteDirectory(const DirEntry entry);
     void HandleRefreshLocalFiles();
     void HandleRefreshRemoteFiles();
     void CreateNewLocalFolder(char *new_folder);

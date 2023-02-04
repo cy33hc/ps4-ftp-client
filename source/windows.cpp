@@ -8,6 +8,7 @@
 #include "config.h"
 #include "gui.h"
 #include "ftpclient.h"
+#include "remote_client.h"
 #include "actions.h"
 #include "util.h"
 #include "lang.h"
@@ -32,15 +33,15 @@ static int ime_field_size;
 static char txt_server_port[6];
 
 bool handle_updates = false;
-FtpClient *ftpclient;
+RemoteClient *ftpclient;
 int64_t bytes_transfered;
 int64_t bytes_to_download;
-std::vector<FsEntry> local_files;
-std::vector<FsEntry> remote_files;
-std::set<FsEntry> multi_selected_local_files;
-std::set<FsEntry> multi_selected_remote_files;
-FsEntry selected_local_file;
-FsEntry selected_remote_file;
+std::vector<DirEntry> local_files;
+std::vector<DirEntry> remote_files;
+std::set<DirEntry> multi_selected_local_files;
+std::set<DirEntry> multi_selected_remote_files;
+DirEntry selected_local_file;
+DirEntry selected_remote_file;
 ACTIONS selected_action;
 char status_message[1024];
 char local_file_to_select[256];
@@ -81,10 +82,11 @@ namespace Windows
 
     void Init()
     {
-        ftpclient = new FtpClient();
-        ftpclient->SetConnmode(ftp_settings->pasv_mode ? FtpClient::pasv : FtpClient::port);
-        ftpclient->SetCallbackBytes(1);
-        ftpclient->SetCallbackXferFunction(FtpCallback);
+        FtpClient *client = new FtpClient();
+        client->SetConnmode(ftp_settings->pasv_mode ? FtpClient::pasv : FtpClient::port);
+        client->SetCallbackBytes(1);
+        client->SetCallbackXferFunction(FtpCallback);
+        ftpclient = client;
 
         sprintf(local_file_to_select, "..");
         sprintf(remote_file_to_select, "..");
@@ -426,7 +428,7 @@ namespace Windows
         }
         for (int j = 0; j < local_files.size(); j++)
         {
-            FsEntry item = local_files[j];
+            DirEntry item = local_files[j];
             ImGui::SetColumnWidth(-1, 740);
             ImGui::PushID(i);
             auto search_item = multi_selected_local_files.find(item);
@@ -570,7 +572,7 @@ namespace Windows
         i = 99999;
         for (int j = 0; j < remote_files.size(); j++)
         {
-            FsEntry item = remote_files[j];
+            DirEntry item = remote_files[j];
 
             ImGui::SetColumnWidth(-1, 740);
             auto search_item = multi_selected_remote_files.find(item);
@@ -903,7 +905,7 @@ namespace Windows
         }
     }
 
-    void ShowPropertiesDialog(FsEntry item)
+    void ShowPropertiesDialog(DirEntry item)
     {
         ImGuiIO &io = ImGui::GetIO();
         (void)io;

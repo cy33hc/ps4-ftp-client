@@ -167,13 +167,13 @@ namespace FS
         }
     }
 
-    std::vector<FsEntry> ListDir(const std::string &ppath, int *err)
+    std::vector<DirEntry> ListDir(const std::string &ppath, int *err)
     {
-        std::vector<FsEntry> out;
-        FsEntry entry;
+        std::vector<DirEntry> out;
+        DirEntry entry;
         std::string path = ppath;
 
-        memset(&entry, 0, sizeof(FsEntry));
+        memset(&entry, 0, sizeof(DirEntry));
         sprintf(entry.directory, "%s", path.c_str());
         sprintf(entry.name, "..");
         sprintf(entry.display_size, lang_strings[STR_FOLDER]);
@@ -193,7 +193,7 @@ namespace FS
         while (true)
         {
             struct dirent *dirent;
-            FsEntry entry;
+            DirEntry entry;
             dirent = readdir(fd);
             if (dirent == NULL)
             {
@@ -384,32 +384,6 @@ namespace FS
         }
 
         return 1;
-    }
-
-    int FsEntryComparator(const void *v1, const void *v2)
-    {
-        const FsEntry *p1 = (FsEntry *)v1;
-        const FsEntry *p2 = (FsEntry *)v2;
-        if (strcasecmp(p1->name, "..") == 0)
-            return -1;
-        if (strcasecmp(p2->name, "..") == 0)
-            return 1;
-
-        if (p1->isDir && !p2->isDir)
-        {
-            return -1;
-        }
-        else if (!p1->isDir && p2->isDir)
-        {
-            return 1;
-        }
-
-        return strcasecmp(p1->name, p2->name);
-    }
-
-    void Sort(std::vector<FsEntry> &list)
-    {
-        qsort(&list[0], list.size(), sizeof(FsEntry), FsEntryComparator);
     }
 
     std::string GetPath(const std::string &ppath1, const std::string &ppath2)
