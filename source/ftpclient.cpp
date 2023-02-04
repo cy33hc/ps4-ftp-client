@@ -115,6 +115,7 @@ int FtpClient::Connect(const std::string &host, unsigned short port, const std::
 	else
 	{
 		Quit();
+		sprintf(mp_ftphandle->response, "%s", lang_strings[STR_FAIL_LOGIN_MSG]);
 	}
 
 	return ret;

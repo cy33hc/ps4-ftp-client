@@ -592,7 +592,7 @@ namespace Actions
         }
         else
         {
-                sprintf(status_message, lang_strings[STR_FAIL_LOGIN_MSG]);
+                sprintf(status_message, "%s", ftpclient->LastResponse());
         }
         selected_action = ACTION_NONE;
     }
