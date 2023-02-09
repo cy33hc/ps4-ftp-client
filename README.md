@@ -1,3 +1,5 @@
+# This repo is archived, please refer to the superceded version. https://github.com/cy33hc/ps4-ezremote-client
+
 # PS4 FTP Client
 
 Simple FTP client for the PS4
